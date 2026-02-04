@@ -1,0 +1,11 @@
+.program spi_rw
+.side_set 2
+
+.wrap_target
+begin:         
+    out x, 8                side 0b01  ; x = number of bits to output. CS deasserted
+    jmp x--, writeloop      side 0b01  ; Pre-decement x by 1 so loop has correct number of iterations
+writeloop:
+    out pins, 1             side 0b00  ; Write value on pins, lower clock. CS asserted
+    jmp x--, writeloop      side 0b10  ; Raise clock: this is when PSRAM reads the value. Loop if we have more to write
+.wrap
