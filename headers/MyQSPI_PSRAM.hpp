@@ -28,11 +28,6 @@ data_pins(data_pins)
 
 void MyQSPI_PSRAM::initPSRAM()
 {
-    std::cout << "SYS clock: " << SYS_CLK_HZ << std::endl;
-    std::cout << "PSRAM target clock: " << PSRAM_CLOCK << std::endl;
-    std::cout << "Clock divisor: " << clock_divider*2 << std::endl;
-    std::cout << "PSRAM clock:" << (SYS_CLK_HZ/2)/clock_divider << std::endl;
-
     pio_gpio_init(_pio, cs_sck_pins);
     pio_gpio_init(_pio, cs_sck_pins + 1);
     pio_gpio_init(_pio, data_pins);
@@ -171,11 +166,11 @@ void MyQSPI_PSRAM::write16(uint32_t addr, uint16_t data)
     dma_channel_wait_for_finish_blocking(dma_chan_write);
 }
 
-void MyQSPI_PSRAM::write_block(uint32_t block_num, uint8_t* data, uint16_t data_len)
+void MyQSPI_PSRAM::write_page(uint32_t page_num, const uint8_t* data, const uint16_t data_len)
 {
     if(data_len > 1024) return;
     uint16_t size = 1024*2+4*2;
-    uint32_t addr = block_num*1024;
+    uint32_t addr = page_num*1024;
 
     buffer[0] = (size)&(0xFFu);
     buffer[1] = (size>>8)&(0xFFu);
@@ -219,9 +214,9 @@ uint16_t MyQSPI_PSRAM::read16(uint32_t addr)
     return tmp_buf;
 }
 
-uint8_t* MyQSPI_PSRAM::read_block(uint32_t block_num){
+const uint8_t* MyQSPI_PSRAM::read_page(uint32_t page_num){
     uint16_t size = 1024*2 + 6;
-    uint32_t addr = block_num*1024;
+    uint32_t addr = page_num*1024;
     
     cmd_read_buffer[0] = 4*2;
     cmd_read_buffer[1] = 0;
