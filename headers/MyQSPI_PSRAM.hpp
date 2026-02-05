@@ -237,15 +237,13 @@ const uint8_t* MyQSPI_PSRAM::read_page(uint32_t page_num){
     dma_channel_wait_for_finish_blocking(dma_chan_write);
     dma_channel_wait_for_finish_blocking(dma_chan_read);
 
-    return buffer;
+    return buffer+2;
 }
 
 uint8_t MyQSPI_PSRAM::find_clock_divisor()
-{
-    uint32_t max_clock = 2*PSRAM_CLOCK+uint32_t(double(2*PSRAM_CLOCK)*0.005);
-    
+{    
     for(uint32_t i = 1; ; ++i){
-        if(SYS_CLK_HZ/i <= max_clock) return i;
+        if(SYS_CLK_HZ/i <= 2*PSRAM_CLOCK) return i;
     }
 
     return 0;
