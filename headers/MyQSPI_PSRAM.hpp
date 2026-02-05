@@ -28,6 +28,7 @@ data_pins(data_pins)
 
 void MyQSPI_PSRAM::initPSRAM()
 {
+    std::cout << "Clk divider: " << clock_divider << std::endl;
     pio_gpio_init(_pio, cs_sck_pins);
     pio_gpio_init(_pio, cs_sck_pins + 1);
     pio_gpio_init(_pio, data_pins);
@@ -102,7 +103,7 @@ void MyQSPI_PSRAM::initPSRAM()
     sm_config_set_clkdiv(&qspi_sm_config, clock_divider);
 
     sm_config_set_out_shift(&qspi_sm_config, false, true, 16);
-    sm_config_set_in_shift(&qspi_sm_config, false, true, 8);
+    sm_config_set_in_shift(&qspi_sm_config, false, true, 16);
 
     pio_sm_set_consecutive_pindirs(_pio, qspi_sm, cs_sck_pins, 2, true);
     pio_sm_set_consecutive_pindirs(_pio, qspi_sm, data_pins, 4, true);
@@ -131,7 +132,7 @@ void MyQSPI_PSRAM::initPSRAM()
 
     dma_read_config = dma_channel_get_default_config(dma_chan_read);
 
-    channel_config_set_transfer_data_size(&dma_read_config, DMA_SIZE_8);     
+    channel_config_set_transfer_data_size(&dma_read_config, DMA_SIZE_16);     
 
     channel_config_set_read_increment(&dma_read_config, false);  
     channel_config_set_write_increment(&dma_read_config, true);   
@@ -196,7 +197,7 @@ uint16_t MyQSPI_PSRAM::read16(uint32_t addr)
     cmd_read_buffer[0] = 4*2;
     cmd_read_buffer[1] = 0;
 
-    cmd_read_buffer[2] = 2*2+5;
+    cmd_read_buffer[2] = 2*2+3;
     cmd_read_buffer[3] = 0;
 
     cmd_read_buffer[4] = (addr >> 16) & 0xFFu;
@@ -206,16 +207,17 @@ uint16_t MyQSPI_PSRAM::read16(uint32_t addr)
     cmd_read_buffer[7] = (addr >> 8) & 0xFFu;
 
     dma_channel_transfer_from_buffer_now(dma_chan_write, cmd_read_buffer, 4);
-    dma_channel_transfer_to_buffer_now(dma_chan_read, buffer, 5);
+    dma_channel_transfer_to_buffer_now(dma_chan_read, buffer, 2);
     dma_channel_wait_for_finish_blocking(dma_chan_write);
     dma_channel_wait_for_finish_blocking(dma_chan_read);
+
     uint16_t tmp_buf;
-    memcpy(&tmp_buf, buffer+3, sizeof(tmp_buf));
+    memcpy(&tmp_buf, buffer+2, sizeof(tmp_buf));
     return tmp_buf;
 }
 
 const uint8_t* MyQSPI_PSRAM::read_page(uint32_t page_num){
-    uint16_t size = 1024*2 + 6;
+    uint16_t size = 1024*2 + 3;
     uint32_t addr = page_num*1024;
     
     cmd_read_buffer[0] = 4*2;
@@ -231,7 +233,7 @@ const uint8_t* MyQSPI_PSRAM::read_page(uint32_t page_num){
     cmd_read_buffer[7] = (addr >> 8) & 0xFFu;
 
     dma_channel_transfer_from_buffer_now(dma_chan_write, cmd_read_buffer, 4);
-    dma_channel_transfer_to_buffer_now(dma_chan_read, buffer, 3+1024);
+    dma_channel_transfer_to_buffer_now(dma_chan_read, buffer, 1+512);
     dma_channel_wait_for_finish_blocking(dma_chan_write);
     dma_channel_wait_for_finish_blocking(dma_chan_read);
 

@@ -8,11 +8,16 @@ begin:
     jmp x--, writeloop      side 0b01 
 writeloop:
     out pins, 4             side 0b00  ; Write value on pins, lower clock. CS asserted
-    jmp x--, writeloop      side 0b10  ; This is when PSRAM reads the value.
-    jmp !y, begin           side 0b00  ; If this is a write-only operation, jump back to beginning.
-    set pindirs, 0x0        side 0b10  ; Set pindirs to input.
+    jmp x--, writeloop      side 0b10 ; This is when PSRAM reads the value.
+    jmp !y, begin           side 0b00 ; If this is a write-only operation, jump back to beginning.
+    set pindirs, 0x0        side 0b10 ; Set pindirs to input.
+    nop                     side 0b00 
+    nop                     side 0b10
+    nop                     side 0b00
+    nop                     side 0b10
+    nop                     side 0b00
 readloop:
-    in pins, 4              side 0b00
-    jmp y--, readloop       side 0b10 
+    in pins, 4              side 0b10
+    jmp y--, readloop       side 0b00
     set pindirs, 0xF        side 0b00
 .wrap
