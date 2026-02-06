@@ -241,9 +241,9 @@ const uint8_t* MyQSPI_PSRAM::read_page(uint32_t page_num){
 }
 
 uint8_t MyQSPI_PSRAM::find_clock_divisor()
-{    
-    for(uint32_t i = 1; ; ++i){
-        if(SYS_CLK_HZ/i <= 2*PSRAM_CLOCK) return i;
+{   
+    for(uint32_t i = 2; i < 5 ; i += 2){
+        if(SYS_CLK_HZ/i <= PSRAM_MAX_CLOCK) return i;
     }
 
     return 0;

@@ -1,0 +1,36 @@
+.program qspi_rw_4
+.side_set 2
+
+.wrap_target
+begin:         
+    set pindirs, 0xF        side 0b01 ; Set pindirs to output. CS deasserted.
+    out x, 16               side 0b01 ; x = number of nibbles to output. 
+    out y, 16               side 0b01 ; y = number of nibbles to input
+    jmp x--, writeloop      side 0b01 ; Pre decrement X to have correct number of loops.
+writeloop:
+    out pins, 4             side 0b00 [1] ; Write value on pins, lower clock. CS asserted.
+    jmp x--, writeloop      side 0b10 [1] ; This is when PSRAM reads the value.
+    jmp !y, write_end       side 0b00 [1] ; If this is a write-only operation, jump back to beginning.
+    set pindirs, 0x0        side 0b10 [1] ; Set pindirs to input.   1st wait clock
+    nop                     side 0b00 [1] 
+    nop                     side 0b10 [1] ;                         2nd wait clock
+    nop                     side 0b00 [1] 
+    nop                     side 0b10 [1] ;                         3rd wait clock
+    nop                     side 0b00 [1] 
+    nop                     side 0b10 [1] ;                         4th wait clock
+    nop                     side 0b00 [1] 
+    nop                     side 0b10 [1] ;                         5th wait clock
+    nop                     side 0b00 [1] 
+    nop                     side 0b10 [1] ;                         6th wait clock
+    nop                     side 0b00 [1] 
+    nop                     side 0b10 [1] ;                         7th wait clock
+    jmp y--, readloop       side 0b00 [1] ; Pre decrement Y to have correct number of loops.
+readloop:
+    in pins, 4              side 0b10 [1] ; Read the value from PSRAM.
+    jmp y--, readloop       side 0b00 [1] 
+    nop                     side 0b00 [2] ; Delay to make sure Tchd is >20ns at high clock speeds.
+    nop                     side 0b01 ; CS deasserted here after a read to give enough time for the psram pins to return to high-z before switching the pindirs to output. 
+    jmp begin               side 0b01 ; Jump to start.
+write_end:
+    nop                     side 0b00 [2] ; Delay to make sure Tchd is >20ns at high clock speeds.
+.wrap

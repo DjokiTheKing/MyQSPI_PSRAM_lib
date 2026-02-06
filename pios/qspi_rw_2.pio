@@ -1,4 +1,4 @@
-.program qspi_rw
+.program qspi_rw_2
 .side_set 2
 
 .wrap_target
@@ -22,6 +22,8 @@ writeloop:
     nop                     side 0b10 ;                         5th wait clock
     nop                     side 0b00
     nop                     side 0b10 ;                         6th wait clock
+    nop                     side 0b00
+    nop                     side 0b10 ;                         7th wait clock
     jmp y--, readloop       side 0b00 ; Pre decrement Y to have correct number of loops.
 readloop:
     in pins, 4              side 0b10 ; Read the value from PSRAM.
