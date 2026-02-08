@@ -21,11 +21,11 @@
 // ---------- PIOS END ----------
 
 #ifndef PSRAM_MAX_CLOCK
-    #define PSRAM_MAX_CLOCK 150000000
+    #define PSRAM_MAX_CLOCK 160000000
 #endif
 
 #ifndef PSRAM_MIN_CLOCK
-    #define PSRAM_MIN_CLOCK 31250000
+    #define PSRAM_MIN_CLOCK 100000000
 #endif
 
 enum class MyQSPI_ERRORS : int8_t {

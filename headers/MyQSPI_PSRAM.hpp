@@ -64,6 +64,11 @@ MyQSPI_ERRORS MyQSPI_PSRAM::initPSRAM()
     gpio_set_drive_strength(data_pins + 2, GPIO_DRIVE_STRENGTH_12MA);
     gpio_set_drive_strength(data_pins + 3, GPIO_DRIVE_STRENGTH_12MA);
 
+    gpio_set_input_hysteresis_enabled(data_pins, false);
+    gpio_set_input_hysteresis_enabled(data_pins + 1, false);
+    gpio_set_input_hysteresis_enabled(data_pins + 2, false);
+    gpio_set_input_hysteresis_enabled(data_pins + 3, false);
+
     uint spi_offset = pio_add_program(_pio, &spi_rw_program);
 
     uint spi_sm = pio_claim_unused_sm(_pio, true);

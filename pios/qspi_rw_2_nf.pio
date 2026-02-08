@@ -3,7 +3,8 @@
 
 .wrap_target
 begin:         
-    set pindirs, 0xF        side 0b01 ; Set pindirs to output. CS deasserted.
+    set pindirs, 0xF        side 0b01 [7]; Set pindirs to output. CS deasserted.
+    nop                     side 0b01 [7]
     out x, 8                side 0b01 ; x = number of nibbles to output. 
     out y, 8                side 0b01 ; y = number of nibbles to input
     jmp x--, writeloop      side 0b01 ; Pre decrement X to have correct number of loops.
@@ -14,17 +15,19 @@ writeloop:
     set pindirs, 0x0        side 0b10 ; Set pindirs to input.   1st wait clock
     nop                     side 0b00 
     nop                     side 0b10 ;                         2nd wait clock
-    nop                     side 0b00
+    nop                     side 0b00 
     nop                     side 0b10 ;                         3rd wait clock
     nop                     side 0b00 
     nop                     side 0b10 ;                         4th wait clock
-    nop                     side 0b00
+    nop                     side 0b00 
     nop                     side 0b10 ;                         5th wait clock
-    nop                     side 0b00
+    nop                     side 0b00 
     nop                     side 0b10 ;                         6th wait clock
+    nop                     side 0b00 
+    nop                     side 0b10
     jmp y--, readloop       side 0b00 ; Pre decrement Y to have correct number of loops.
 readloop:
-    in pins, 4              side 0b10 ; Read the value from PSRAM.
+    in pins, 4              side 0b10   ; Read the value from PSRAM.
     jmp y--, readloop       side 0b00
     jmp begin               side 0b01 ; Jump to start. CS deasserted early after read to wait for high-z before setting pindirs to output.
 .wrap

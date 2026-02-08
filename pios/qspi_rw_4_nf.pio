@@ -3,14 +3,15 @@
 
 .wrap_target
 begin:         
-    set pindirs, 0xF        side 0b01 ; Set pindirs to output. CS deasserted.
+    set pindirs, 0xF        side 0b01 [7] ; Set pindirs to output. CS deasserted.
+    nop                     side 0b01 [7] ; Additional delay for Tcph. 
     out x, 8                side 0b01 ; x = number of nibbles to output. 
-    out y, 8                side 0b01 ; y = number of nibbles to input
+    out y, 8                side 0b01 ; y = number of nibbles to input. 
     jmp x--, writeloop      side 0b01 ; Pre decrement X to have correct number of loops.
 writeloop:
     out pins, 4             side 0b00 [1] ; Write value on pins, lower clock. CS asserted.
     jmp x--, writeloop      side 0b10 [1] ; This is when PSRAM reads the value.
-    jmp !y, begin           side 0b00 [1] ; If this is a write-only operation, jump back to beginning.
+    jmp !y, write_end       side 0b00 [1] ; If this is a write-only operation, jump back to write_end.
     set pindirs, 0x0        side 0b10 [1] ; Set pindirs to input.   1st wait clock
     nop                     side 0b00 [1] 
     nop                     side 0b10 [1] ;                         2nd wait clock
@@ -22,12 +23,15 @@ writeloop:
     nop                     side 0b10 [1] ;                         5th wait clock
     nop                     side 0b00 [1] 
     nop                     side 0b10 [1] ;                         6th wait clock
-    nop                     side 0b00 [1] 
-    nop                     side 0b10 [1]
-    jmp y--, readloop       side 0b00 [1] ; Pre decrement Y to have correct number of loops.
+    nop                     side 0b00 [1] ; +1 sys clk of delay after falling edge.
+    nop                     side 0b10 [1] ; +2 sys clk of delay after falling edge. 
+    jmp y--, readloop       side 0b00 [1] ; +2 sys clk of delay after falling edge. Total 5clk = ~12.5ns, 6ns Taclk + 5ns input delay. Pre decrement Y to have correct number of loops. 
 readloop:
-    nop                     side 0b10
-    in pins, 4              side 0b10     ; Read the value from PSRAM.
+    in pins, 4              side 0b10 [1] ; Read the value from PSRAM.
     jmp y--, readloop       side 0b00 [1]
-    jmp begin               side 0b01 [1]; Jump to start. CS deasserted early after read to wait for high-z before setting pindirs to output.
+    nop                     side 0b10 [1]
+    nop                     side 0b00 [7] ; Additional delay for Tchd.
+    jmp begin               side 0b01 [1] ; Jump to start. CS deasserted early after read to wait for high-z before setting pindirs to output.
+write_end:
+    nop                     side 0b00 [1] ; Additional delay for Tchd.
 .wrap
