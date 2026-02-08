@@ -24,11 +24,25 @@ data_pins(data_pins)
     }
     #endif 
     clock_divider = find_clock_divisor();
+    clock_divider = 4;
+    if(clock_divider == 2) {
+        qspi_program = qspi_rw_2_nf_program;
+        qspi_wrap_target = qspi_rw_2_nf_wrap_target;
+        qspi_wrap = qspi_rw_2_nf_wrap;
+    }else if(clock_divider == 4){
+        qspi_program = qspi_rw_4_nf_program;
+        qspi_wrap_target = qspi_rw_4_nf_wrap_target;
+        qspi_wrap = qspi_rw_4_nf_wrap;
+    }
 }
 
-void MyQSPI_PSRAM::initPSRAM()
+MyQSPI_ERRORS MyQSPI_PSRAM::initPSRAM()
 {
-    std::cout << "Clk divider: " << clock_divider << std::endl;
+    if(!clock_divider) {
+        return MyQSPI_ERRORS::PSRAM_ERROR_COULD_NOT_FIND_SUITABLE_CLOCK_DIV;
+    }
+    std::cout << "Clock divider: " << int(clock_divider) << std::endl;
+
     pio_gpio_init(_pio, cs_sck_pins);
     pio_gpio_init(_pio, cs_sck_pins + 1);
     pio_gpio_init(_pio, data_pins);
@@ -43,6 +57,13 @@ void MyQSPI_PSRAM::initPSRAM()
     gpio_set_slew_rate(data_pins + 2, GPIO_SLEW_RATE_FAST);
     gpio_set_slew_rate(data_pins + 3, GPIO_SLEW_RATE_FAST);
 
+    gpio_set_drive_strength(cs_sck_pins, GPIO_DRIVE_STRENGTH_12MA);
+    gpio_set_drive_strength(cs_sck_pins + 1, GPIO_DRIVE_STRENGTH_12MA);
+    gpio_set_drive_strength(data_pins, GPIO_DRIVE_STRENGTH_12MA);
+    gpio_set_drive_strength(data_pins + 1, GPIO_DRIVE_STRENGTH_12MA);
+    gpio_set_drive_strength(data_pins + 2, GPIO_DRIVE_STRENGTH_12MA);
+    gpio_set_drive_strength(data_pins + 3, GPIO_DRIVE_STRENGTH_12MA);
+
     uint spi_offset = pio_add_program(_pio, &spi_rw_program);
 
     uint spi_sm = pio_claim_unused_sm(_pio, true);
@@ -54,7 +75,7 @@ void MyQSPI_PSRAM::initPSRAM()
     sm_config_set_sideset_pins(&spi_sm_config, cs_sck_pins);
     sm_config_set_out_pins(&spi_sm_config, data_pins, 1);
 
-    sm_config_set_clkdiv(&spi_sm_config, clock_divider*4);
+    sm_config_set_clkdiv(&spi_sm_config, clock_divider*2);
 
     sm_config_set_out_shift(&spi_sm_config, false, true, 8);
 
@@ -87,13 +108,13 @@ void MyQSPI_PSRAM::initPSRAM()
 
     bus_ctrl_hw->priority = BUSCTRL_BUS_PRIORITY_DMA_R_BITS | BUSCTRL_BUS_PRIORITY_DMA_W_BITS;
 
-    uint qspi_offset = pio_add_program(_pio, &qspi_rw_program);
+    uint qspi_offset = pio_add_program(_pio, &qspi_program);
 
     qspi_sm = pio_claim_unused_sm(_pio, true);
 
     pio_sm_config qspi_sm_config = pio_get_default_sm_config();
 
-    sm_config_set_wrap(&qspi_sm_config, qspi_offset + qspi_rw_wrap_target, qspi_offset + qspi_rw_wrap); 
+    sm_config_set_wrap(&qspi_sm_config, qspi_offset + qspi_wrap_target, qspi_offset + qspi_wrap); 
     sm_config_set_sideset(&qspi_sm_config, 2, false, false);
 
     sm_config_set_sideset_pins(&qspi_sm_config, cs_sck_pins);
@@ -101,10 +122,10 @@ void MyQSPI_PSRAM::initPSRAM()
     sm_config_set_out_pins(&qspi_sm_config, data_pins, 4);
     sm_config_set_in_pins(&qspi_sm_config, data_pins);
 
-    sm_config_set_clkdiv(&qspi_sm_config, clock_divider);
+    sm_config_set_clkdiv(&qspi_sm_config, 1);
 
-    sm_config_set_out_shift(&qspi_sm_config, false, true, 16);
-    sm_config_set_in_shift(&qspi_sm_config, false, true, 16);
+    sm_config_set_out_shift(&qspi_sm_config, false, true, 8);
+    sm_config_set_in_shift(&qspi_sm_config, false, true, 8);
 
     pio_sm_set_consecutive_pindirs(_pio, qspi_sm, cs_sck_pins, 2, true);
     pio_sm_set_consecutive_pindirs(_pio, qspi_sm, data_pins, 4, true);
@@ -119,7 +140,7 @@ void MyQSPI_PSRAM::initPSRAM()
 
     dma_write_config = dma_channel_get_default_config(dma_chan_write);
 
-    channel_config_set_transfer_data_size(&dma_write_config, DMA_SIZE_16);      
+    channel_config_set_transfer_data_size(&dma_write_config, DMA_SIZE_8);      
 
     channel_config_set_read_increment(&dma_write_config, true);                        
     channel_config_set_write_increment(&dma_write_config, false);    
@@ -133,7 +154,7 @@ void MyQSPI_PSRAM::initPSRAM()
 
     dma_read_config = dma_channel_get_default_config(dma_chan_read);
 
-    channel_config_set_transfer_data_size(&dma_read_config, DMA_SIZE_16);     
+    channel_config_set_transfer_data_size(&dma_read_config, DMA_SIZE_8);     
 
     channel_config_set_read_increment(&dma_read_config, false);  
     channel_config_set_write_increment(&dma_read_config, true);   
@@ -144,9 +165,12 @@ void MyQSPI_PSRAM::initPSRAM()
     
     dma_channel_set_config(dma_chan_read, &dma_read_config, false);
     dma_channel_set_read_addr(dma_chan_read, &_pio->rxf[qspi_sm], false);
+
+    return MyQSPI_ERRORS::PSRAM_OK;
 }
 
-void MyQSPI_PSRAM::write16(uint32_t addr, uint16_t data)
+/*
+void write16_old(uint32_t addr, uint16_t data)
 {
     buffer[0] = 6*2;
     buffer[1] = 0;
@@ -167,7 +191,7 @@ void MyQSPI_PSRAM::write16(uint32_t addr, uint16_t data)
     dma_channel_wait_for_finish_blocking(dma_chan_write);
 }
 
-void MyQSPI_PSRAM::write_page(uint32_t page_num, const uint8_t* data, const uint16_t data_len)
+void write_page_old(uint32_t page_num, const uint8_t* data, const uint16_t data_len)
 {
     if(data_len > 1024) return;
     uint16_t size = 1024*2+4*2;
@@ -192,7 +216,7 @@ void MyQSPI_PSRAM::write_page(uint32_t page_num, const uint8_t* data, const uint
 }
         
 
-uint16_t MyQSPI_PSRAM::read16(uint32_t addr)
+uint16_t read16_old(uint32_t addr)
 {
     cmd_read_buffer[0] = 4*2;
     cmd_read_buffer[1] = 0;
@@ -216,7 +240,7 @@ uint16_t MyQSPI_PSRAM::read16(uint32_t addr)
     return tmp_buf;
 }
 
-const uint8_t* MyQSPI_PSRAM::read_page(uint32_t page_num){
+const uint8_t* read_page_old(uint32_t page_num){
     uint16_t size = 1024*2;
     uint32_t addr = page_num*1024;
     
@@ -238,6 +262,132 @@ const uint8_t* MyQSPI_PSRAM::read_page(uint32_t page_num){
     dma_channel_wait_for_finish_blocking(dma_chan_read);
 
     return buffer;
+}
+*/
+
+/// @brief Write 1 byte of data to the psram.
+/// @param addr Write address. 
+/// @param data Data.
+void MyQSPI_PSRAM::write8(uint32_t addr, uint8_t data){
+    buffer[0] = 5*2;
+    buffer[1] = 0;
+    buffer[2] = 0x38u;
+    buffer[3] = (addr >> 16) & 0xFFu;
+    buffer[4] = (addr >> 8) & 0xFFu;
+    buffer[5] = (addr) & 0xFFu;
+    buffer[6] = data;
+    
+    dma_channel_transfer_from_buffer_now(dma_chan_write, buffer, 7);
+    dma_channel_wait_for_finish_blocking(dma_chan_write);
+    busy_wait_at_least_cycles(22);
+}
+
+/// @brief Write 2 bytes of data to the psram.
+/// @param addr Write address. 
+/// @param data Data.
+void MyQSPI_PSRAM::write16(uint32_t addr, uint16_t data){
+    
+}
+/// @brief Write 4 bytes of data to the psram.
+/// @param addr Write address. 
+/// @param data Data.
+void MyQSPI_PSRAM::write32(uint32_t addr, uint32_t data){
+    
+}
+
+/// @brief Write 8 bytes of data to the psram.
+/// @param addr Write address. 
+/// @param data Data.
+void MyQSPI_PSRAM::write64(uint32_t addr, uint64_t data){
+    
+}
+
+/// @brief Write 64 bytes of data to the psram.
+/// @param addr Write address. 
+/// @param data Pointer to the data. Make sure it's at least 64 bytes of length. 
+void MyQSPI_PSRAM::write512(uint32_t addr, const uint8_t* data){
+    
+}
+
+/// @brief Write a block of data .
+/// @param addr Write address.
+/// @param data Pointer to the data buffer.
+/// @param data_len Length of the data buffer. 
+void MyQSPI_PSRAM::write(uint32_t addr, const uint8_t* data, const uint8_t data_len){
+    
+}
+
+/// @brief Write a block of data with maximum length of 124 bytes. MAKE SURE data_len is at most 124, if the data_len is bigger stuff may break.
+/// @param addr Write address.
+/// @param data Pointer to the data buffer.
+/// @param data_len Length of the data buffer. 
+void MyQSPI_PSRAM::write_limited(uint32_t addr, const uint8_t* data, const uint8_t data_len){
+    
+}
+
+/// @brief Read 1 byte of data from the psram.
+/// @param addr Read address. 
+/// @param data Data.
+uint8_t MyQSPI_PSRAM::read8(uint32_t addr){
+    buffer[0] = 4*2;
+    buffer[1] = 1*2;
+
+    buffer[2] = 0xEBu;
+    
+    buffer[3] = (addr >> 16) & 0xFFu;
+    buffer[4] = (addr >> 8) & 0xFFu;
+    buffer[5] = (addr) & 0xFFu;
+
+    dma_channel_transfer_from_buffer_now(dma_chan_write, buffer, 6);
+    dma_channel_transfer_to_buffer_now(dma_chan_read, buffer+6, 1);
+    dma_channel_wait_for_finish_blocking(dma_chan_write);
+    dma_channel_wait_for_finish_blocking(dma_chan_read);
+    busy_wait_at_least_cycles(22);
+    return buffer[6];
+}
+
+/// @brief Read 2 bytes of data from the psram.
+/// @param addr Read address. 
+/// @param data Data.
+uint16_t MyQSPI_PSRAM::read16(uint32_t addr){
+    return 0;
+}
+
+/// @brief Read 4 bytes of data from the psram.
+/// @param addr Read address. 
+/// @param data Data.
+uint32_t MyQSPI_PSRAM::read32(uint32_t addr){
+    return 0;
+}
+
+/// @brief Read 8 bytes of data from the psram.
+/// @param addr Read address. 
+/// @param data Data.
+uint64_t MyQSPI_PSRAM::read64(uint32_t addr){
+    return 0;
+}
+
+/// @brief Read 64 bytes of data from the psram.
+/// @param addr Read address.
+/// @param data Pointer to the read buffer. Make sure it's at least 64 bytes of length
+void MyQSPI_PSRAM::read512(uint32_t addr, uint8_t* data){
+    
+}
+
+/// @brief Read a block of data .
+/// @param addr Read address.
+/// @param data Pointer to the read buffer.
+/// @param data_len Length of the data to be read. 
+void MyQSPI_PSRAM::read(uint32_t addr, uint8_t* data, const uint8_t data_len){
+    
+}
+
+/// @brief Read a block of data with maximum length of 124 bytes. MAKE SURE data_len is at most 124, if the data_len is bigger stuff may break.
+/// @param addr Write address.
+/// @param data Pointer to the data buffer.
+/// @param data_len Length of the data buffer. 
+void MyQSPI_PSRAM::read_limited(uint32_t addr, uint8_t* data, const uint8_t data_len){
+    
 }
 
 uint8_t MyQSPI_PSRAM::find_clock_divisor()

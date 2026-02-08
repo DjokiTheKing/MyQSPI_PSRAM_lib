@@ -14,8 +14,8 @@
 
 // ---------- PIOS ----------
 
-#include "qspi_rw_2.pio.h"
-#include "qspi_rw_4.pio.h"
+#include "qspi_rw_2_nf.pio.h"
+#include "qspi_rw_4_nf.pio.h"
 #include "spi_rw.pio.h"
 
 // ---------- PIOS END ----------
@@ -28,6 +28,12 @@
     #define PSRAM_MIN_CLOCK 31250000
 #endif
 
+enum class MyQSPI_ERRORS : int8_t {
+    PSRAM_OK = 0,
+    PSRAM_ERROR_COULD_NOT_FIND_SUITABLE_CLOCK_DIV = 1,
+    PSRAM_ERROR_COULD_NOT_DETECT_PSRAM = 2
+};
+
 /// @brief Class for adding QSPI PSRAM functionality to rp2040
 class MyQSPI_PSRAM{
     public:
@@ -38,59 +44,81 @@ class MyQSPI_PSRAM{
         MyQSPI_PSRAM(uint8_t cs_sck_pins, uint8_t data_pins, uint8_t pio_num=0);
 
         /// @brief Initialize the psram, setup the qspi and dmas.
-        void initPSRAM();
+        MyQSPI_ERRORS initPSRAM();
+
+        /// @brief Write 1 byte of data to the psram.
+        /// @param addr Write address. 
+        /// @param data Data.
+        void write8(uint32_t addr, uint8_t data);
 
         /// @brief Write 2 bytes of data to the psram.
         /// @param addr Write address. 
         /// @param data Data.
-        void write2(uint32_t addr, uint16_t data);
+        void write16(uint32_t addr, uint16_t data);
 
         /// @brief Write 4 bytes of data to the psram.
         /// @param addr Write address. 
         /// @param data Data.
-        void write4(uint32_t addr, uint32_t data);
+        void write32(uint32_t addr, uint32_t data);
 
         /// @brief Write 8 bytes of data to the psram.
         /// @param addr Write address. 
         /// @param data Data.
-        void write8(uint32_t addr, uint64_t data);
+        void write64(uint32_t addr, uint64_t data);
 
         /// @brief Write 64 bytes of data to the psram.
         /// @param addr Write address. 
-        /// @param data Data.
-        void write64(uint32_t addr, const uint16_t* data);
+        /// @param data Pointer to the data. Make sure it's at least 64 bytes of length. 
+        void write512(uint32_t addr, const uint8_t* data);
 
         /// @brief Write a block of data .
         /// @param addr Write address.
         /// @param data Pointer to the data buffer.
         /// @param data_len Length of the data buffer. 
-        void write(uint32_t addr, const uint16_t* data, const uint16_t data_len);
+        void write(uint32_t addr, const uint8_t* data, const uint8_t data_len);
+
+        /// @brief Write a block of data with maximum length of 124 bytes. MAKE SURE data_len is at most 124, if the data_len is bigger stuff may break.
+        /// @param addr Write address.
+        /// @param data Pointer to the data buffer.
+        /// @param data_len Length of the data buffer. 
+        void write_limited(uint32_t addr, const uint8_t* data, const uint8_t data_len);
+
+        /// @brief Read 1 byte of data from the psram.
+        /// @param addr Read address. 
+        /// @param data Data.
+        uint8_t read8(uint32_t addr);
 
         /// @brief Read 2 bytes of data from the psram.
         /// @param addr Read address. 
         /// @param data Data.
-        uint16_t read2(uint32_t addr);
+        uint16_t read16(uint32_t addr);
 
         /// @brief Read 4 bytes of data from the psram.
         /// @param addr Read address. 
         /// @param data Data.
-        uint32_t read4(uint32_t addr);
+        uint32_t read32(uint32_t addr);
 
         /// @brief Read 8 bytes of data from the psram.
         /// @param addr Read address. 
         /// @param data Data.
-        uint64_t read8(uint32_t addr);
+        uint64_t read64(uint32_t addr);
 
         /// @brief Read 64 bytes of data from the psram.
         /// @param addr Read address.
         /// @param data Pointer to the read buffer. Make sure it's at least 64 bytes of length
-        void read64(uint32_t addr, uint16_t* data);
+        void read512(uint32_t addr, uint8_t* data);
 
         /// @brief Read a block of data .
         /// @param addr Read address.
         /// @param data Pointer to the read buffer.
         /// @param data_len Length of the data to be read. 
-        void read(uint32_t addr, uint16_t* data, const uint16_t data_len);
+        void read(uint32_t addr, uint8_t* data, const uint8_t data_len);
+
+        /// @brief Read a block of data with maximum length of 124 bytes. MAKE SURE data_len is at most 124, if the data_len is bigger stuff may break.
+        /// @param addr Write address.
+        /// @param data Pointer to the data buffer.
+        /// @param data_len Length of the data buffer. 
+        void read_limited(uint32_t addr, uint8_t* data, const uint8_t data_len);
 
     private: // private Variables
         uint8_t cs_sck_pins, data_pins;
@@ -100,10 +128,12 @@ class MyQSPI_PSRAM{
         dma_channel_config dma_write_config, dma_read_config;
 
         uint qspi_sm;
+        pio_program qspi_program;
+        uint8_t qspi_wrap_target;
+        uint8_t qspi_wrap;
+        uint8_t clock_divider;
 
-        uint16_t clock_divider;
-
-        uint16_t buffer[300], cmd_read_buffer[5];
+        uint8_t buffer[256];
 
         /// @brief psram clocks
         uint16_t max_clocks_selected;
