@@ -3,8 +3,10 @@
 
 #include "MyQSPI_PSRAM.h"
 
-/// @brief Initialize the class with the first pin for vga, pin order: hsync, vsync, green, blue, red; First go the low order bits then high
-/// @param start_pin first of the pins (hsync pin)
+/// @brief Initialize the class with the first pin for chip select and clock pins, data_pins, and choose a pio
+/// @param cs_sck_pins first of the chip select and clock pins
+/// @param data_pins first of the sio data pins
+/// @param pio_num choose pio(optional, default is 0)
 MyQSPI_PSRAM::MyQSPI_PSRAM(uint8_t cs_sck_pins, uint8_t data_pins, uint8_t pio_num)
 :
 cs_sck_pins(cs_sck_pins),
@@ -64,6 +66,13 @@ MyQSPI_ERRORS MyQSPI_PSRAM::initPSRAM()
     gpio_set_drive_strength(data_pins + 2, GPIO_DRIVE_STRENGTH_4MA);
     gpio_set_drive_strength(data_pins + 3, GPIO_DRIVE_STRENGTH_4MA);
 
+    gpio_set_pulls(cs_sck_pins, false, true);
+    gpio_set_pulls(cs_sck_pins + 1, false, true);
+    gpio_set_pulls(data_pins, false, true);
+    gpio_set_pulls(data_pins + 1, false, true);
+    gpio_set_pulls(data_pins + 2, false, true);
+    gpio_set_pulls(data_pins + 3, false, true);
+
     uint spi_offset = pio_add_program(_pio, &spi_rw_program);
 
     uint spi_sm = pio_claim_unused_sm(_pio, true);
@@ -121,14 +130,13 @@ MyQSPI_ERRORS MyQSPI_PSRAM::initPSRAM()
     sm_config_set_set_pins(&qspi_sm_config, data_pins, 4);
     sm_config_set_out_pins(&qspi_sm_config, data_pins, 4);
     sm_config_set_in_pins(&qspi_sm_config, data_pins);
-
+    
     sm_config_set_clkdiv(&qspi_sm_config, 1);
 
     sm_config_set_out_shift(&qspi_sm_config, false, true, 8);
     sm_config_set_in_shift(&qspi_sm_config, false, true, 8);
 
     pio_sm_set_consecutive_pindirs(_pio, qspi_sm, cs_sck_pins, 2, true);
-    pio_sm_set_consecutive_pindirs(_pio, qspi_sm, data_pins, 4, true);
 
     hw_set_bits(&_pio->input_sync_bypass, 0xfu << data_pins);
 
@@ -279,7 +287,6 @@ void MyQSPI_PSRAM::write8(uint32_t addr, uint8_t data){
     
     dma_channel_transfer_from_buffer_now(dma_chan_write, buffer, 7);
     dma_channel_wait_for_finish_blocking(dma_chan_write);
-    busy_wait_at_least_cycles(22);
 }
 
 /// @brief Write 2 bytes of data to the psram.
@@ -342,7 +349,7 @@ uint8_t MyQSPI_PSRAM::read8(uint32_t addr){
     dma_channel_transfer_to_buffer_now(dma_chan_read, buffer+6, 1);
     dma_channel_wait_for_finish_blocking(dma_chan_write);
     dma_channel_wait_for_finish_blocking(dma_chan_read);
-    busy_wait_at_least_cycles(22);
+
     return buffer[6];
 }
 
