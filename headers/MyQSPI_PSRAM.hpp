@@ -57,17 +57,12 @@ MyQSPI_ERRORS MyQSPI_PSRAM::initPSRAM()
     gpio_set_slew_rate(data_pins + 2, GPIO_SLEW_RATE_FAST);
     gpio_set_slew_rate(data_pins + 3, GPIO_SLEW_RATE_FAST);
 
-    gpio_set_drive_strength(cs_sck_pins, GPIO_DRIVE_STRENGTH_12MA);
-    gpio_set_drive_strength(cs_sck_pins + 1, GPIO_DRIVE_STRENGTH_12MA);
-    gpio_set_drive_strength(data_pins, GPIO_DRIVE_STRENGTH_12MA);
-    gpio_set_drive_strength(data_pins + 1, GPIO_DRIVE_STRENGTH_12MA);
-    gpio_set_drive_strength(data_pins + 2, GPIO_DRIVE_STRENGTH_12MA);
-    gpio_set_drive_strength(data_pins + 3, GPIO_DRIVE_STRENGTH_12MA);
-
-    gpio_set_input_hysteresis_enabled(data_pins, false);
-    gpio_set_input_hysteresis_enabled(data_pins + 1, false);
-    gpio_set_input_hysteresis_enabled(data_pins + 2, false);
-    gpio_set_input_hysteresis_enabled(data_pins + 3, false);
+    gpio_set_drive_strength(cs_sck_pins, GPIO_DRIVE_STRENGTH_4MA);
+    gpio_set_drive_strength(cs_sck_pins + 1, GPIO_DRIVE_STRENGTH_4MA);
+    gpio_set_drive_strength(data_pins, GPIO_DRIVE_STRENGTH_4MA);
+    gpio_set_drive_strength(data_pins + 1, GPIO_DRIVE_STRENGTH_4MA);
+    gpio_set_drive_strength(data_pins + 2, GPIO_DRIVE_STRENGTH_4MA);
+    gpio_set_drive_strength(data_pins + 3, GPIO_DRIVE_STRENGTH_4MA);
 
     uint spi_offset = pio_add_program(_pio, &spi_rw_program);
 
