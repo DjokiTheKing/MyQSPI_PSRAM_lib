@@ -2,10 +2,18 @@
 .side_set 2
 
 .wrap_target
-begin:         
-    out x, 8                side 0b01  ; x = number of bits to output. CS deasserted
-    jmp x--, writeloop      side 0b01  ; Pre-decement x by 1 so loop has correct number of iterations
+begin:
+    out x, 8            side 0b01  ; x = number of bits to output. CS deasserted
+    out y, 8            side 0b01  ; y = number of bits to input
+    jmp x--, writeloop  side 0b01  ; Pre-decement x by 1 so loop has correct number of iterations
 writeloop:
-    out pins, 1             side 0b00  ; Write value on pins, lower clock. CS asserted
-    jmp x--, writeloop      side 0b10  ; Raise clock: this is when PSRAM reads the value. Loop if we have more to write
+    out pins, 1         side 0b00  ; Write value on pin, lower clock. CS asserted
+    jmp x--, writeloop  side 0b10  ; Raise clock: this is when PSRAM reads the value. Loop if we have more to write
+    jmp !y, begin       side 0b00  ; If this is a write-only operation, jump back to beginning
+    nop                 side 0b10  ; Fudge factor of extra clock cycle; the PSRAM needs 1 extra for output to start appearing
+    jmp readloop_mid    side 0b00  ; Jump to middle of readloop to decrement y and get right clock phase
+readloop:
+    in pins, 1          side 0b00  ; Read value on pin, lower clock. Datasheet says to read on falling edge > 83MHz
+readloop_mid:
+    jmp y--, readloop   side 0b10  ; Raise clock. Loop if we have more to read
 .wrap

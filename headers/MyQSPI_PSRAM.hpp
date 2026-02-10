@@ -45,34 +45,6 @@ MyQSPI_ERRORS MyQSPI_PSRAM::initPSRAM()
     }
     std::cout << "Clock divider: " << int(clock_divider) << std::endl;
 
-    pio_gpio_init(_pio, cs_sck_pins);
-    pio_gpio_init(_pio, cs_sck_pins + 1);
-    pio_gpio_init(_pio, data_pins);
-    pio_gpio_init(_pio, data_pins + 1);
-    pio_gpio_init(_pio, data_pins + 2);
-    pio_gpio_init(_pio, data_pins + 3);
-
-    gpio_set_slew_rate(cs_sck_pins, GPIO_SLEW_RATE_FAST);
-    gpio_set_slew_rate(cs_sck_pins + 1, GPIO_SLEW_RATE_FAST);
-    gpio_set_slew_rate(data_pins, GPIO_SLEW_RATE_FAST);
-    gpio_set_slew_rate(data_pins + 1, GPIO_SLEW_RATE_FAST);
-    gpio_set_slew_rate(data_pins + 2, GPIO_SLEW_RATE_FAST);
-    gpio_set_slew_rate(data_pins + 3, GPIO_SLEW_RATE_FAST);
-
-    gpio_set_drive_strength(cs_sck_pins, GPIO_DRIVE_STRENGTH_4MA);
-    gpio_set_drive_strength(cs_sck_pins + 1, GPIO_DRIVE_STRENGTH_4MA);
-    gpio_set_drive_strength(data_pins, GPIO_DRIVE_STRENGTH_4MA);
-    gpio_set_drive_strength(data_pins + 1, GPIO_DRIVE_STRENGTH_4MA);
-    gpio_set_drive_strength(data_pins + 2, GPIO_DRIVE_STRENGTH_4MA);
-    gpio_set_drive_strength(data_pins + 3, GPIO_DRIVE_STRENGTH_4MA);
-
-    gpio_set_pulls(cs_sck_pins, false, true);
-    gpio_set_pulls(cs_sck_pins + 1, false, true);
-    gpio_set_pulls(data_pins, false, true);
-    gpio_set_pulls(data_pins + 1, false, true);
-    gpio_set_pulls(data_pins + 2, false, true);
-    gpio_set_pulls(data_pins + 3, false, true);
-
     uint spi_offset = pio_add_program(_pio, &spi_rw_program);
 
     uint spi_sm = pio_claim_unused_sm(_pio, true);
@@ -83,37 +55,111 @@ MyQSPI_ERRORS MyQSPI_PSRAM::initPSRAM()
 
     sm_config_set_sideset_pins(&spi_sm_config, cs_sck_pins);
     sm_config_set_out_pins(&spi_sm_config, data_pins, 1);
+    sm_config_set_in_pins(&spi_sm_config, data_pins+1);
 
-    sm_config_set_clkdiv(&spi_sm_config, clock_divider*2);
+    sm_config_set_clkdiv(&spi_sm_config, 2);
 
     sm_config_set_out_shift(&spi_sm_config, false, true, 8);
+    sm_config_set_in_shift(&spi_sm_config, false, true, 8);
 
     pio_sm_set_consecutive_pindirs(_pio, spi_sm, cs_sck_pins, 2, true);
     pio_sm_set_consecutive_pindirs(_pio, spi_sm, data_pins, 1, true);
+    pio_sm_set_consecutive_pindirs(_pio, spi_sm, data_pins+1, 1, false);
 
-    pio_sm_init(_pio, spi_sm, spi_offset, &spi_sm_config);
+    pio_gpio_init(_pio, cs_sck_pins);
+    pio_gpio_init(_pio, cs_sck_pins + 1);
+    pio_gpio_init(_pio, data_pins);
+    pio_gpio_init(_pio, data_pins + 1);
+    pio_gpio_init(_pio, data_pins + 2);
+    pio_gpio_init(_pio, data_pins + 3);
+
+    // gpio_set_slew_rate(cs_sck_pins, GPIO_SLEW_RATE_FAST);
+    // gpio_set_slew_rate(cs_sck_pins + 1, GPIO_SLEW_RATE_FAST);
+    // gpio_set_slew_rate(data_pins, GPIO_SLEW_RATE_FAST);
+    // gpio_set_slew_rate(data_pins + 1, GPIO_SLEW_RATE_FAST);
+    // gpio_set_slew_rate(data_pins + 2, GPIO_SLEW_RATE_FAST);
+    // gpio_set_slew_rate(data_pins + 3, GPIO_SLEW_RATE_FAST);
+
+    // gpio_set_drive_strength(cs_sck_pins, GPIO_DRIVE_STRENGTH_4MA);
+    // gpio_set_drive_strength(cs_sck_pins + 1, GPIO_DRIVE_STRENGTH_4MA);
+    // gpio_set_drive_strength(data_pins, GPIO_DRIVE_STRENGTH_4MA);
+    // gpio_set_drive_strength(data_pins + 1, GPIO_DRIVE_STRENGTH_4MA);
+    // gpio_set_drive_strength(data_pins + 2, GPIO_DRIVE_STRENGTH_4MA);
+    // gpio_set_drive_strength(data_pins + 3, GPIO_DRIVE_STRENGTH_4MA);
+
+    // gpio_set_pulls(cs_sck_pins, false, false);
+    // gpio_set_pulls(cs_sck_pins + 1, false, false);
+    // gpio_set_pulls(data_pins, false, false);
+    // gpio_set_pulls(data_pins + 1, false, false);
+    // gpio_set_pulls(data_pins + 2, false, true);
+    // gpio_set_pulls(data_pins + 3, false, true);
+
+    if(pio_sm_init(_pio, spi_sm, spi_offset, &spi_sm_config) != PICO_OK){
+        return MyQSPI_ERRORS::PIO_ERROR_COULD_NOT_INITIALIZE;
+    }
     pio_sm_set_enabled(_pio, spi_sm, true);
 
     busy_wait_us(150);
 
-    pio_sm_put_blocking(pio0, spi_sm, 0x08000000u);
-    pio_sm_put_blocking(pio0, spi_sm, 0x66000000u);
+    pio_sm_put_blocking(_pio, spi_sm, 0x08000000u);
+    pio_sm_put_blocking(_pio, spi_sm, 0x00000000u);
+    pio_sm_put_blocking(_pio, spi_sm, 0x66000000u);
 
     busy_wait_us(10);
 
-    pio_sm_put_blocking(pio0, spi_sm, 0x08000000u);
-    pio_sm_put_blocking(pio0, spi_sm, 0x99000000u);
-
-    busy_wait_us(100);
-
-    pio_sm_put_blocking(pio0, spi_sm, 0x08000000u);
-    pio_sm_put_blocking(pio0, spi_sm, 0x35000000u);
+    pio_sm_put_blocking(_pio, spi_sm, 0x08000000u);
+    pio_sm_put_blocking(_pio, spi_sm, 0x00000000u);
+    pio_sm_put_blocking(_pio, spi_sm, 0x99000000u);
 
     busy_wait_us(150);
 
+    uint32_t kgd = 0, eid = 0;
+    pio_sm_put_blocking(_pio, spi_sm, 0x20000000u);
+    pio_sm_put_blocking(_pio, spi_sm, 0x30000000u);
+
+    pio_sm_put_blocking(_pio, spi_sm, 0x9F000000u);
+    for(int i = 0; i < 3; ++i) pio_sm_put_blocking(_pio, spi_sm, 0xFF000000u);
+
+    std::cout << std::setw(2) << std::setfill('0') << std::uppercase << std::hex << "Read 0:       " << pio_sm_get_blocking(_pio, spi_sm) << std::endl;
+    kgd = pio_sm_get_blocking(_pio, spi_sm);
+    eid = pio_sm_get_blocking(_pio, spi_sm);
+    std::cout << std::setw(2) << std::setfill('0') << std::uppercase << std::hex << "Read 1 - kgd: " << kgd << std::endl;
+    std::cout << std::setw(2) << std::setfill('0') << std::uppercase << std::hex << "Read 2 - eid: " << eid << std::endl;
+    std::cout << std::setw(2) << std::setfill('0') << std::uppercase << std::hex << "Read 3:       " << pio_sm_get_blocking(_pio, spi_sm) << std::endl;
+    std::cout << std::setw(2) << std::setfill('0') << std::uppercase << std::hex << "Read 4:       " << pio_sm_get_blocking(_pio, spi_sm) << std::endl;
+    std::cout << std::setw(2) << std::setfill('0') << std::uppercase << std::hex << "Read 5:       " << pio_sm_get_blocking(_pio, spi_sm) << std::endl;
+
+    if(kgd != 0x5D) return MyQSPI_ERRORS::PSRAM_ERROR_COULD_NOT_DETECT_PSRAM;
+
+    uint32_t _psram_size = 1024 * 1024;
+    uint8_t size_id = eid >> 5;
+    if (eid == 0x26 || size_id == 2) {
+        _psram_size *= 8;
+    } else if (size_id == 0) {
+        _psram_size *= 2;
+    } else if (size_id == 1) {
+        _psram_size *= 4;
+    }
+    std::cout << "PSRAM_SIZE: " << std::dec << _psram_size << std::endl;
+
+    busy_wait_us(2);
+
+    pio_sm_put_blocking(_pio, spi_sm, 0x08000000u);
+    pio_sm_put_blocking(_pio, spi_sm, 0x00000000u);
+    
+    pio_sm_put_blocking(_pio, spi_sm, 0xC0000000u);
+
+    busy_wait_us(1);
+
+    pio_sm_put_blocking(_pio, spi_sm, 0x08000000u);
+    pio_sm_put_blocking(_pio, spi_sm, 0x00000000u);
+    
+    pio_sm_put_blocking(_pio, spi_sm, 0x35000000u);
+
+    busy_wait_us(10);
+    
     pio_sm_set_enabled(_pio, spi_sm, false);
-    pio_remove_program(_pio, &spi_rw_program, spi_offset);
-    pio_sm_unclaim(_pio, spi_sm);
+    pio_remove_program_and_unclaim_sm(&spi_rw_program, _pio, spi_sm, spi_offset);
 
     bus_ctrl_hw->priority = BUSCTRL_BUS_PRIORITY_DMA_R_BITS | BUSCTRL_BUS_PRIORITY_DMA_W_BITS;
 
@@ -137,10 +183,50 @@ MyQSPI_ERRORS MyQSPI_PSRAM::initPSRAM()
     sm_config_set_in_shift(&qspi_sm_config, false, true, 8);
 
     pio_sm_set_consecutive_pindirs(_pio, qspi_sm, cs_sck_pins, 2, true);
+    pio_sm_set_consecutive_pindirs(_pio, qspi_sm, data_pins, 4, false);
 
     hw_set_bits(&_pio->input_sync_bypass, 0xfu << data_pins);
 
-    pio_sm_init(_pio, qspi_sm, qspi_offset, &qspi_sm_config);
+    pio_gpio_init(_pio, cs_sck_pins);
+    pio_gpio_init(_pio, cs_sck_pins + 1);
+    pio_gpio_init(_pio, data_pins);
+    pio_gpio_init(_pio, data_pins + 1);
+    pio_gpio_init(_pio, data_pins + 2);
+    pio_gpio_init(_pio, data_pins + 3);
+
+    // gpio_set_slew_rate(cs_sck_pins, GPIO_SLEW_RATE_FAST);
+    // gpio_set_slew_rate(cs_sck_pins + 1, GPIO_SLEW_RATE_FAST);
+    // gpio_set_slew_rate(data_pins, GPIO_SLEW_RATE_FAST);
+    // gpio_set_slew_rate(data_pins + 1, GPIO_SLEW_RATE_FAST);
+    // gpio_set_slew_rate(data_pins + 2, GPIO_SLEW_RATE_FAST);
+    // gpio_set_slew_rate(data_pins + 3, GPIO_SLEW_RATE_FAST);
+
+    // gpio_set_input_hysteresis_enabled(cs_sck_pins, true);
+    // gpio_set_input_hysteresis_enabled(cs_sck_pins + 1, true);
+    // gpio_set_input_hysteresis_enabled(data_pins, true);
+    // gpio_set_input_hysteresis_enabled(data_pins + 1, true);
+    // gpio_set_input_hysteresis_enabled(data_pins + 2, true);
+    // gpio_set_input_hysteresis_enabled(data_pins + 3, true);
+
+    gpio_set_drive_strength(cs_sck_pins, GPIO_DRIVE_STRENGTH_4MA);
+    gpio_set_drive_strength(cs_sck_pins + 1, GPIO_DRIVE_STRENGTH_8MA);
+    gpio_set_drive_strength(data_pins, GPIO_DRIVE_STRENGTH_4MA);
+    gpio_set_drive_strength(data_pins + 1, GPIO_DRIVE_STRENGTH_4MA);
+    gpio_set_drive_strength(data_pins + 2, GPIO_DRIVE_STRENGTH_4MA);
+    gpio_set_drive_strength(data_pins + 3, GPIO_DRIVE_STRENGTH_4MA);
+
+
+    gpio_set_pulls(cs_sck_pins, false, false);
+    gpio_set_pulls(cs_sck_pins + 1, false, false);
+    gpio_set_pulls(data_pins, false, false);
+    gpio_set_pulls(data_pins + 1, false, false);
+    gpio_set_pulls(data_pins + 2, false, false);
+    gpio_set_pulls(data_pins + 3, false, false);
+
+    if(pio_sm_init(_pio, qspi_sm, qspi_offset, &qspi_sm_config) != PICO_OK) {
+        return MyQSPI_ERRORS::PIO_ERROR_COULD_NOT_INITIALIZE;
+    }
+
     pio_sm_set_enabled(_pio, qspi_sm, true);
 
     dma_chan_read = dma_claim_unused_channel(true);
@@ -279,10 +365,13 @@ const uint8_t* read_page_old(uint32_t page_num){
 void MyQSPI_PSRAM::write8(uint32_t addr, uint8_t data){
     buffer[0] = 5*2;
     buffer[1] = 0;
+    
     buffer[2] = 0x38u;
+
     buffer[3] = (addr >> 16) & 0xFFu;
     buffer[4] = (addr >> 8) & 0xFFu;
     buffer[5] = (addr) & 0xFFu;
+
     buffer[6] = data;
     
     dma_channel_transfer_from_buffer_now(dma_chan_write, buffer, 7);
@@ -337,7 +426,7 @@ void MyQSPI_PSRAM::write_limited(uint32_t addr, const uint8_t* data, const uint8
 /// @param data Data.
 uint8_t MyQSPI_PSRAM::read8(uint32_t addr){
     buffer[0] = 4*2;
-    buffer[1] = 1*2;
+    buffer[1] = 1*2-1;
 
     buffer[2] = 0xEBu;
     
