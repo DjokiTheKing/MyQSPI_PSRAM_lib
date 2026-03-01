@@ -11,7 +11,6 @@ writeloop:
     jmp x--, writeloop  side 0b10  ; Raise clock: this is when PSRAM reads the value. Loop if we have more to write
     jmp !y, begin       side 0b00  ; If this is a write-only operation, jump back to beginning
     nop                 side 0b10  ; Fudge factor of extra clock cycle; the PSRAM needs 1 extra for output to start appearing
-    jmp readloop_mid    side 0b00  ; Jump to middle of readloop to decrement y and get right clock phase
 readloop:
     in pins, 1          side 0b00  ; Read value on pin, lower clock. Datasheet says to read on falling edge > 83MHz
 readloop_mid:

@@ -123,7 +123,7 @@ MyQSPI_ERRORS MyQSPI_PSRAM::initPSRAM()
     sm_config_set_out_pins(&spi_sm_config, data_pins, 1);
     sm_config_set_in_pins(&spi_sm_config, data_pins+1);
 
-    sm_config_set_clkdiv(&spi_sm_config, 1);
+    sm_config_set_clkdiv(&spi_sm_config, 2);
 
     sm_config_set_out_shift(&spi_sm_config, false, true, 8);
     sm_config_set_in_shift(&spi_sm_config, false, true, 8);
