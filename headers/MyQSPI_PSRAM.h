@@ -10,6 +10,7 @@
 #include "pico/stdlib.h"
 #include "hardware/pio.h"
 #include "hardware/dma.h"
+#include "hardware/sync.h"
 #include "hardware/structs/bus_ctrl.h"
 
 // ---------- PIOS ----------
@@ -75,14 +76,8 @@ class MyQSPI_PSRAM{
         /// @brief Write a block of data .
         /// @param addr Write address.
         /// @param data Pointer to the data buffer.
-        /// @param data_len Length of the data buffer. 
-        void write(uint32_t addr, const uint8_t* data, const uint8_t data_len);
-
-        /// @brief Write a block of data with maximum length of 124 bytes. MAKE SURE data_len is at most 124, if the data_len is bigger stuff may break.
-        /// @param addr Write address.
-        /// @param data Pointer to the data buffer.
-        /// @param data_len Length of the data buffer. 
-        void write_limited(uint32_t addr, const uint8_t* data, const uint8_t data_len);
+        /// @param data_len Length of the data buffer. MAX is 2048
+        void write(uint32_t addr, const uint8_t* data, const uint32_t data_len);
 
         /// @brief Read 1 byte of data from the psram.
         /// @param addr Read address. 
@@ -112,14 +107,24 @@ class MyQSPI_PSRAM{
         /// @brief Read a block of data .
         /// @param addr Read address.
         /// @param data Pointer to the read buffer.
-        /// @param data_len Length of the data to be read. 
-        void read(uint32_t addr, uint8_t* data, const uint8_t data_len);
+        /// @param data_len Length of the data to be read. MAX is 2048
+        void read(uint32_t addr, uint8_t* data, const uint32_t data_len);
 
-        /// @brief Read a block of data with maximum length of 124 bytes. MAKE SURE data_len is at most 124, if the data_len is bigger stuff may break.
-        /// @param addr Write address.
-        /// @param data Pointer to the data buffer.
-        /// @param data_len Length of the data buffer. 
-        void read_limited(uint32_t addr, uint8_t* data, const uint8_t data_len);
+        /// @brief Write a value across a block of memory.
+        /// @param addr Address of the first byte.
+        /// @param val Value to write.
+        /// @param size Size of the block to write.
+        void pmemset(uint32_t addr, uint8_t val, const uint32_t size);
+
+        /// @brief Copy a block of memory from one place to another.
+        /// @param addr_dst Destination address.
+        /// @param addr_src Source address.
+        /// @param size Size of the block to copy.
+        void pmemcpy(uint32_t addr_dst, uint32_t addr_src, const uint32_t size);
+
+        /// @brief Get the size of the psram.
+        /// @return Size of the psram bytes.
+        uint32_t get_size(){ return psram_size;};
 
     private: // private Variables
         uint8_t cs_sck_pins, data_pins;
@@ -134,13 +139,11 @@ class MyQSPI_PSRAM{
         uint8_t qspi_wrap;
         uint8_t clock_divider;
 
-        uint8_t buffer[130];
+        alignas(4) uint8_t buffer[2146];
 
-        /// @brief psram clocks
-        uint16_t max_clocks_selected;
+        spin_lock_t *psram_spinlock;
 
-        /// @brief mcu clocks
-        uint16_t min_clocks_deselected;
+        uint32_t psram_size;
         
     private: // private Functions
         uint8_t find_clock_divisor();

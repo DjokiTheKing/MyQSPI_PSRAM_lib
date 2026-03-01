@@ -19,5 +19,6 @@ target_include_directories(MyQSPI_PSRAM_lib PUBLIC
 target_link_libraries(MyQSPI_PSRAM_lib PUBLIC 
         hardware_dma
         hardware_pio
+        hardware_sync
         pico_stdlib
 )
