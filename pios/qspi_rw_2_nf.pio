@@ -7,7 +7,6 @@ begin:
     nop                     side 0b01 [7]
     out x, 8                side 0b01 ; x = number of nibbles to output. 
     out y, 8                side 0b01 ; y = number of nibbles to input
-    jmp x--, writeloop      side 0b01 ; Pre decrement X to have correct number of loops.
 writeloop:
     out pins, 4             side 0b00 ; Write value on pins, lower clock. CS asserted.
     jmp x--, writeloop      side 0b10 ; This is when PSRAM reads the value.
@@ -24,10 +23,12 @@ writeloop:
     nop                     side 0b00 
     nop                     side 0b10 ;                         6th wait clock
     nop                     side 0b00 
-    nop                     side 0b10
-    jmp y--, readloop       side 0b00 ; Pre decrement Y to have correct number of loops.
+    nop                     side 0b10 ;                         fudge clock
+    nop                     side 0b00
+    nop                     side 0b10 ; Pre decrement Y to have correct number of loops.
 readloop:
-    in pins, 4              side 0b10   ; Read the value from PSRAM.
-    jmp y--, readloop       side 0b00
+    in pins, 4              side 0b00   ; Read the value from PSRAM.
+    jmp y--, readloop       side 0b10
+    nop                     side 0b00
     jmp begin               side 0b01 ; Jump to start. CS deasserted early after read to wait for high-z before setting pindirs to output.
 .wrap

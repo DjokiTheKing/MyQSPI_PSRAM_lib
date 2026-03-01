@@ -134,7 +134,7 @@ class MyQSPI_PSRAM{
         uint8_t qspi_wrap;
         uint8_t clock_divider;
 
-        uint8_t buffer[256];
+        uint8_t buffer[130];
 
         /// @brief psram clocks
         uint16_t max_clocks_selected;
