@@ -55,5 +55,5 @@ Write speed 640 byte: 55.0212MB/s.\
 Read speed 640 byte: 62.6425MB/s.\
 Errors: 0
 
-### Some errors poupup due to wiring, and this techically being an overclock of the ram.
+### Some errors popup due to wiring, and this techically being an overclock of the ram.
 What's interesting is that the exact same code can read and write faster on rp2350 than on rp2040.
