@@ -45,7 +45,7 @@ class MyQSPI_PSRAM{
         /// @param pio_num choose pio(optional, default is 0)
         MyQSPI_PSRAM(uint8_t cs_sck_pins, uint8_t data_pins, uint8_t pio_num=0);
 
-        /// @brief Initialize the psram, setup the qspi and dmas.
+        /// @brief Initialize the psram.
         MyQSPI_ERRORS initPSRAM();
 
         /// @brief Write 1 byte of data to the psram.
@@ -77,7 +77,7 @@ class MyQSPI_PSRAM{
         /// @param addr Write address.
         /// @param data Pointer to the data buffer.
         /// @param data_len Length of the data buffer. MAX is 2048
-        void write(uint32_t addr, const uint8_t* data, const uint32_t data_len);
+        void write(uint32_t addr, const uint8_t* data, uint32_t data_len);
 
         /// @brief Read 1 byte of data from the psram.
         /// @param addr Read address. 
@@ -139,7 +139,7 @@ class MyQSPI_PSRAM{
         uint8_t qspi_wrap;
         uint8_t clock_divider;
 
-        alignas(4) uint8_t buffer[2146];
+        alignas(4) uint8_t buffer[132];
 
         spin_lock_t *psram_spinlock;
 

@@ -383,10 +383,44 @@ void MyQSPI_PSRAM::write512(uint32_t addr, const uint8_t* data){
 #endif
 }
 
-void MyQSPI_PSRAM::write(uint32_t addr, const uint8_t *data, const uint32_t data_len){
+void MyQSPI_PSRAM::write(uint32_t addr, const uint8_t *data, uint32_t data_len){
 #ifdef MYQSPI_PSRAM_USE_SPINLOCK
     uint32_t  intr_state = spin_lock_blocking(psram_spinlock);
 #endif
+    uint32_t current_data_pos = 0;
+    while(data_len > 124u){
+        buffer[2+0] = 255;
+        buffer[2+1] = 0;
+        
+        buffer[2+2] = 0x38u;
+
+        buffer[2+3] = (addr >> 16) & 0xFFu;
+        buffer[2+4] = (addr >> 8) & 0xFFu;
+        buffer[2+5] = (addr) & 0xFFu;
+
+        memcpy(buffer+8, data+current_data_pos, 124);
+
+        dma_channel_transfer_from_buffer_now(dma_chan_write, buffer+2, 130);
+        dma_channel_wait_for_finish_blocking(dma_chan_write);
+
+        addr += 124u;
+        data_len -= 124u;
+        current_data_pos += 124u;
+    }
+
+    buffer[2+0] = 4u*2u+data_len*2u-1u;
+    buffer[2+1] = 0u;
+    
+    buffer[2+2] = 0x38u;
+
+    buffer[2+3] = (addr >> 16) & 0xFFu;
+    buffer[2+4] = (addr >> 8) & 0xFFu;
+    buffer[2+5] = (addr) & 0xFFu;
+
+    memcpy(buffer+8, data+current_data_pos, data_len);
+
+    dma_channel_transfer_from_buffer_now(dma_chan_write, buffer+2, 6+data_len);
+    dma_channel_wait_for_finish_blocking(dma_chan_write);
 
 #ifdef MYQSPI_PSRAM_USE_SPINLOCK
     spin_unlock(psram_spinlock, intr_state);
@@ -545,13 +579,41 @@ void MyQSPI_PSRAM::read(uint32_t addr, uint8_t* data, const uint32_t data_len){
 #ifdef MYQSPI_PSRAM_USE_SPINLOCK
     uint32_t  intr_state = spin_lock_blocking(psram_spinlock);
 #endif
+    uint32_t local_data_len = data_len;
+    uint32_t current_pos = 2;
+    while(local_data_len > 128){
+        buffer[current_pos++] = 4u*2u-1u;
+        buffer[current_pos++] = 255u;
+
+        buffer[current_pos++] = 0xEBu;
+        
+        buffer[current_pos++] = (addr >> 16) & 0xFFu;
+        buffer[current_pos++] = (addr >> 8) & 0xFFu;
+        buffer[current_pos++] = (addr) & 0xFFu;
+
+        local_data_len -= 128u;
+        addr += 128u;
+    }
+    buffer[current_pos++] = 4*2-1;
+    buffer[current_pos++] = local_data_len*2u-1u;
+
+    buffer[current_pos++] = 0xEBu;
+    
+    buffer[current_pos++] = (addr >> 16) & 0xFFu;
+    buffer[current_pos++] = (addr >> 8) & 0xFFu;
+    buffer[current_pos++] = (addr) & 0xFFu;
+
+    dma_channel_transfer_from_buffer_now(dma_chan_write, buffer+2, current_pos-2);
+    dma_channel_transfer_to_buffer_now(dma_chan_read, data, data_len);
+    dma_channel_wait_for_finish_blocking(dma_chan_write);
+    dma_channel_wait_for_finish_blocking(dma_chan_read);
 
 #ifdef MYQSPI_PSRAM_USE_SPINLOCK
     spin_unlock(psram_spinlock, intr_state);
 #endif
 }
 
-void MyQSPI_PSRAM::pmemset(uint32_t addr, uint8_t val, const uint32_t size){
+void MyQSPI_PSRAM::pmemset(uint32_t addr, uint8_t val, uint32_t size){
 #ifdef MYQSPI_PSRAM_USE_SPINLOCK
     uint32_t  intr_state = spin_lock_blocking(psram_spinlock);
 #endif
@@ -561,7 +623,7 @@ void MyQSPI_PSRAM::pmemset(uint32_t addr, uint8_t val, const uint32_t size){
 #endif
 }
 
-void MyQSPI_PSRAM::pmemcpy(uint32_t addr_dst, uint32_t addr_src, const uint32_t size){
+void MyQSPI_PSRAM::pmemcpy(uint32_t addr_dst, uint32_t addr_src, uint32_t size){
 #ifdef MYQSPI_PSRAM_USE_SPINLOCK
     uint32_t  intr_state = spin_lock_blocking(psram_spinlock);
 #endif
