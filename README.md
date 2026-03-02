@@ -30,7 +30,7 @@ Write speed 640 byte: 49.8823MB/s.\
 Read speed 640 byte: 61.4213MB/s.\
 Errors: 4
 
-### Tested on rp2350, SYS_CLK_HZ: 297000000, PSRAM_FREQUENCY: 148500000
+### rp2350, SYS_CLK_HZ: 297000000, PSRAM_FREQUENCY: 148500000
 Write speed 8bit: 6.02627MB/s.\
 Read speed 8bit: 3.58528MB/s.\
 Errors: 0
@@ -55,5 +55,5 @@ Write speed 640 byte: 55.0212MB/s.\
 Read speed 640 byte: 62.6425MB/s.\
 Errors: 0
 
-### Some errors popup due to wiring, and this techically being an overclock of the ram.
+### Some errors popup due to wiring, and this being an overclock of the ram.
 What's interesting is that the exact same code can read and write faster on rp2350 than on rp2040.
