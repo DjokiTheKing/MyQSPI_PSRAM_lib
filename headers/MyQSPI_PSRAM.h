@@ -36,6 +36,12 @@ enum class MyQSPI_ERRORS : int8_t {
     PIO_ERROR_COULD_NOT_INITIALIZE = 3
 };
 
+#ifdef MYQSPI_PSRAM_RUN_FROM_PSRAM
+    #define MYQSPI_PSRAM_FUNC_WRAPPER(x) __no_inline_not_in_flash_func(x)
+#else
+    #define MYQSPI_PSRAM_FUNC_WRAPPER(x) x
+#endif
+
 /// @brief Class for adding QSPI PSRAM functionality to rp2040
 class MyQSPI_PSRAM{
     public:
@@ -51,76 +57,76 @@ class MyQSPI_PSRAM{
         /// @brief Write 1 byte of data to the psram.
         /// @param addr Write address. 
         /// @param data Data.
-        void write8(uint32_t addr, uint8_t data);
+        void MYQSPI_PSRAM_FUNC_WRAPPER(write8)(uint32_t addr, uint8_t data);
 
         /// @brief Write 2 bytes of data to the psram.
         /// @param addr Write address. 
         /// @param data Data.
-        void write16(uint32_t addr, uint16_t data);
+        void MYQSPI_PSRAM_FUNC_WRAPPER(write16)(uint32_t addr, uint16_t data);
 
         /// @brief Write 4 bytes of data to the psram.
         /// @param addr Write address. 
         /// @param data Data.
-        void write32(uint32_t addr, uint32_t data);
+        void MYQSPI_PSRAM_FUNC_WRAPPER(write32)(uint32_t addr, uint32_t data);
 
         /// @brief Write 8 bytes of data to the psram.
         /// @param addr Write address. 
         /// @param data Data.
-        void write64(uint32_t addr, uint64_t data);
+        void MYQSPI_PSRAM_FUNC_WRAPPER(write64)(uint32_t addr, uint64_t data);
 
         /// @brief Write 64 bytes of data to the psram.
         /// @param addr Write address. 
         /// @param data Pointer to the data. Make sure it's at least 64 bytes of length. 
-        void write512(uint32_t addr, const uint8_t* data);
+        void MYQSPI_PSRAM_FUNC_WRAPPER(write512)(uint32_t addr, const uint8_t* data);
 
         /// @brief Write a block of data .
         /// @param addr Write address.
         /// @param data Pointer to the data buffer.
         /// @param data_len Length of the data buffer. MAX is 2048
-        void write(uint32_t addr, const uint8_t* data, uint32_t data_len);
+        void MYQSPI_PSRAM_FUNC_WRAPPER(write)(uint32_t addr, const uint8_t* data, uint32_t data_len);
 
         /// @brief Read 1 byte of data from the psram.
         /// @param addr Read address. 
         /// @param data Data.
-        uint8_t read8(uint32_t addr);
+        uint8_t MYQSPI_PSRAM_FUNC_WRAPPER(read8)(uint32_t addr);
 
         /// @brief Read 2 bytes of data from the psram.
         /// @param addr Read address. 
         /// @param data Data.
-        uint16_t read16(uint32_t addr);
+        uint16_t MYQSPI_PSRAM_FUNC_WRAPPER(read16)(uint32_t addr);
 
         /// @brief Read 4 bytes of data from the psram.
         /// @param addr Read address. 
         /// @param data Data.
-        uint32_t read32(uint32_t addr);
+        uint32_t MYQSPI_PSRAM_FUNC_WRAPPER(read32)(uint32_t addr);
 
         /// @brief Read 8 bytes of data from the psram.
         /// @param addr Read address. 
         /// @param data Data.
-        uint64_t read64(uint32_t addr);
+        uint64_t MYQSPI_PSRAM_FUNC_WRAPPER(read64)(uint32_t addr);
 
         /// @brief Read 64 bytes of data from the psram.
         /// @param addr Read address.
         /// @param data Pointer to the read buffer. Make sure it's at least 64 bytes of length
-        void read512(uint32_t addr, uint8_t* data);
+        void MYQSPI_PSRAM_FUNC_WRAPPER(read512)(uint32_t addr, uint8_t* data);
 
         /// @brief Read a block of data .
         /// @param addr Read address.
         /// @param data Pointer to the read buffer.
         /// @param data_len Length of the data to be read. MAX is 2048
-        void read(uint32_t addr, uint8_t* data, const uint32_t data_len);
+        void MYQSPI_PSRAM_FUNC_WRAPPER(read)(uint32_t addr, uint8_t* data, const uint32_t data_len);
 
         /// @brief Write a value across a block of memory.
         /// @param addr Address of the first byte.
         /// @param val Value to write.
         /// @param size Size of the block to write.
-        void pmemset(uint32_t addr, uint8_t val, const uint32_t size);
+        void MYQSPI_PSRAM_FUNC_WRAPPER(pmemset)(uint32_t addr, uint8_t val, const uint32_t size);
 
         /// @brief Copy a block of memory from one place to another.
         /// @param addr_dst Destination address.
         /// @param addr_src Source address.
         /// @param size Size of the block to copy.
-        void pmemcpy(uint32_t addr_dst, uint32_t addr_src, const uint32_t size);
+        void MYQSPI_PSRAM_FUNC_WRAPPER(pmemcpy)(uint32_t addr_dst, uint32_t addr_src, const uint32_t size);
 
         /// @brief Get the size of the psram.
         /// @return Size of the psram bytes.
@@ -141,8 +147,9 @@ class MyQSPI_PSRAM{
 
         alignas(4) uint8_t buffer[132];
 
+#ifdef MYQSPI_PSRAM_USE_SPINLOCK
         spin_lock_t *psram_spinlock;
-
+#endif // MYQSPI_PSRAM_USE_SPINLOCK
         uint32_t psram_size;
         
     private: // private Functions
