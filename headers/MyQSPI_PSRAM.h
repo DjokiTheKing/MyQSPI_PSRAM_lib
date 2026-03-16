@@ -36,7 +36,7 @@ enum class MyQSPI_ERRORS : int8_t {
     PIO_ERROR_COULD_NOT_INITIALIZE = 3
 };
 
-#ifdef MYQSPI_PSRAM_RUN_FROM_PSRAM
+#ifdef MYQSPI_PSRAM_RUN_FROM_SRAM
     #define MYQSPI_PSRAM_FUNC_WRAPPER(x) __no_inline_not_in_flash_func(x)
 #else
     #define MYQSPI_PSRAM_FUNC_WRAPPER(x) x
